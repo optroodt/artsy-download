@@ -1,4 +1,5 @@
 import argparse
+import io
 import pathlib
 
 import urlobject
@@ -6,11 +7,13 @@ import requests
 from PIL import Image
 
 BLOCK_SIZE = 512
+JPEG_QUALITY = 100
 
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", required=True, type=str)
+    parser.add_argument("--output", required=False, default="output.jpg", type=str)
     return parser.parse_args()
 
 
@@ -24,7 +27,7 @@ def download(url):
     return image_bytes
 
 
-def stitch(url):
+def stitch(url, output_file):
     url_obj = urlobject.URLObject(url)
     base_url = url_obj.root
     for segment in url_obj.path.segments[:-1]:
@@ -47,11 +50,15 @@ def stitch(url):
 
             x_pos = j * BLOCK_SIZE
             y_pos = i * BLOCK_SIZE
-            destination.paste(Image.open(source_img), (x_pos, y_pos))
 
-    destination.save("output.jpg", quality=100)
+            destination.paste(
+                Image.open(download(base_url.add_path_segment(source_img))),
+                (x_pos, y_pos),
+            )
+
+    destination.save(output_file, quality=JPEG_QUALITY)
 
 
 if __name__ == "__main__":
     args = get_arguments()
-    stitch(args.url)
+    stitch(args.url, args.output)
